@@ -447,7 +447,7 @@ import {
   IFieldMeta,
 } from "@lark-base-open/js-sdk";
 import { useI18n } from "vue-i18n";
-import { ref, onMounted, computed, watch, shallowRef, watchEffect } from "vue";
+import { ref, onMounted, computed, watch, shallowRef } from "vue";
 import {
   Layout,
   LayoutSider,
@@ -474,7 +474,6 @@ defineProps<{
 const { t } = useI18n(); // 国际化
 const STATE_ARRAY = ["Create", "Config", "View", "FullScreen"];
 type OptionItem = { label: string; value: string };
-const themeConfig = ref();
 // -- 核心数据
 const state = ref("Create"); // 初始状态为配置模式
 const logoShownList = ref<string[]>([]);
@@ -860,20 +859,11 @@ const initDashboard = async (config) => {
 };
 
 
-watchEffect(() => {
-  const onThemeChange = (res) => {
-    themeConfig.value = res.data;
-  };
-  dashboard.onThemeChange(onThemeChange);
-});
-
 onMounted(async () => {
   // 初始化勾选字段
   state.value = dashboard.state;
   console.log("state", state.value);
 
-  const theme = await dashboard.getTheme();
-  themeConfig.value = theme;
 
   if (state.value == STATE_ARRAY[0]) {
     await initWithoutConfig();
