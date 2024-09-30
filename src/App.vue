@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import { useDark } from "@vueuse/core";
+import '@lark-base-open/js-sdk/dist/style/dashboard.css';
 import Form from "./components/Form.vue";
 import { bitable, ThemeModeType } from "@lark-base-open/js-sdk";
 const isDark = useDark({
