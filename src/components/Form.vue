@@ -90,7 +90,7 @@
     <!-- 配置区域 -->
     <LayoutSider
       v-if="state === STATE_ARRAY[1] || state === STATE_ARRAY[0]"
-      class="layout-sider"
+      :class="{'layout-sider': true, 'semi-always-dark': themeString == 'DARK', 'semi-always-light': themeString == 'LIGHT'}"
       style="
         height: 100%;
         border-left: 1px solid var(--semi-color-stroke);
@@ -505,6 +505,7 @@ const fieldType = computed(() => {
   );
 });
 // -- 辅助数据
+const themeString = ref<String>("");  // 仪表盘主题: DARK or LIGHT
 const tableOptionList = ref<OptionItem[]>([]);
 const viewOptionList = ref<OptionItem[]>([]);
 const fieldOptionList = ref<OptionItem[]>([]);
@@ -877,6 +878,10 @@ onMounted(async () => {
   // 初始化勾选字段
   state.value = dashboard.state;
   console.log("state", state.value);
+  
+  const theme = await dashboard.getTheme();
+  console.log("theme", theme)
+  themeString.value = theme.theme
 
 
   if (state.value == STATE_ARRAY[0]) {
@@ -967,6 +972,23 @@ onMounted(async () => {
   line-height: 22px;
   text-align: left;
   color: var(--semi-color-text-0);
+}
+
+.label-dark {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  text-align: left;
+  color: rgba(255, 255, 255, 1);
+  /* 208, 211, 214 */
+}
+
+.style-container > div > b-form-item-dark {
+  width: 48%;
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .style-container {
