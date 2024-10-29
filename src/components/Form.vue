@@ -62,7 +62,7 @@
                     targetBorderOption +
                     ' ' +
                     `${targetStyleBorderColor}${targetStyleBorderOpacity}`,
-                  backgroundColor: `${targetStyleBgColor}${targetStyleOpacity}`,
+                  backgroundColor: hexToRgba(targetStyleBgColor, targetStyleOpacity),
                   boxSizing: 'border-box',
                 }"
                 v-for="(url, urlIndex) in page"
@@ -565,6 +565,20 @@ const simulateCarouselChange = () => {
 
 const onImageLoad = () => {
   isLoading.value = false;
+}
+
+const hexToRgba = (hex:string, opacity:any) => {
+  // 移除十六进制颜色值前的'#'
+  hex = hex.replace("#", "");
+
+  // 解析十六进制值
+  var r = parseInt(hex.substring(0, 2), 16);
+  var g = parseInt(hex.substring(2, 4), 16);
+  var b = parseInt(hex.substring(4, 6), 16);
+
+  // 返回rgb格式的字符串
+  console.log()
+  return "rgba(" + r + "," + g + "," + b + "," + opacity/100 + ")";
 }
 
 
