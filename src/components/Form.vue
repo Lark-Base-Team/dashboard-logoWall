@@ -1,7 +1,10 @@
 <template>
+  <div :style="{backgroundColor: themeChartBgColor}">
   <Layout
+    :class="{'layout-sider': true, 'semi-always-dark': themeString == 'DARK', 'semi-always-light': themeString == 'LIGHT'}"
     class="layout-container"
-    style="overflow: hidden; width: 100vw; height: 100vh; display: flex"
+    :style="{backgroundColor: themeChartBgColor}"
+    style="overflow: hidden; width: 100vw; height: 100vh; display: flex;background-color: transparent;"
   >
     <div
       v-if="state === STATE_ARRAY[1] || state === STATE_ARRAY[0]"
@@ -11,10 +14,12 @@
         background-color: var(--semi-color-stroke);
         position: absolute;
       "
+      :style="{backgroundColor: themeChartBgColor}"
     ></div>
     <LayoutContent
       class="layout-content"
       :style="{
+        backgroundColor: themeChartBgColor,
         width:
           state == STATE_ARRAY[2] || state == STATE_ARRAY[3]
             ? '100% !important'
@@ -436,6 +441,7 @@
       </div>
     </LayoutSider>
   </Layout>
+</div>
 </template>
 
 <script lang="ts" setup>
@@ -444,7 +450,7 @@ import {
   DashboardState,
   bitable,
   FieldType,
-  IFieldMeta,
+  IFieldMeta
 } from "@lark-base-open/js-sdk";
 import { useI18n } from "vue-i18n";
 import { ref, onMounted, computed, watch, shallowRef } from "vue";
@@ -474,6 +480,7 @@ defineProps<{
 const { t } = useI18n(); // 国际化
 const STATE_ARRAY = ["Create", "Config", "View", "FullScreen"];
 type OptionItem = { label: string; value: string };
+const themeChartBgColor = ref("")
 // -- 核心数据
 const state = ref("Create"); // 初始状态为配置模式
 const logoShownList = ref<string[]>([]);
@@ -652,6 +659,19 @@ watch([targetViewId, targetFieldId], async ([newViewId, newFieldId], []) => {
     carouselActiveIndex.value = 0
   }
 });
+
+dashboard.onThemeChange(res => {
+  themeChartBgColor.value = res.data.chartBgColor
+
+  if (res.data.chartBgColor == "var(--bg-body)")
+    themeChartBgColor.value = "#ffffff"
+  console.log(res.data.chartBgColor)
+  console.log(res.data.theme)
+  themeString.value = res.data.theme
+  console.log(themeString.value)
+  
+});  
+
 
 const onTableIdChange = async (e: string) => {
   targetTableId.value = e;
@@ -882,7 +902,7 @@ onMounted(async () => {
   const theme = await dashboard.getTheme();
   console.log("theme", theme)
   themeString.value = theme.theme
-
+  // unsubscribe = dashboard.onThemeChange(handleThemeChange);
 
   if (state.value == STATE_ARRAY[0]) {
     await initWithoutConfig();
@@ -899,6 +919,7 @@ onMounted(async () => {
 
 
 });
+
 </script>
 
 <style scoped>
