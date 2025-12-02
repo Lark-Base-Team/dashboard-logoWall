@@ -32,6 +32,7 @@
     >
       <div class="carousel-container">
         <Carousel
+          :key="targetFieldId"
           animation="fade"
           :speed="targetCarouselSpeed * 1000"
           :autoPlay="true"
@@ -117,12 +118,16 @@
             overflow: auto;
           "
         >
+          <a-form-item class="a-form-item" v-if="isMultipleBase">
+           <BaseSelector :baseToken="baseToken" @change="onBaseChange" />
+          </a-form-item>
           <a-form-item class="a-form-item">
             <div class="lable">{{ $t("label.table") }}</div>
             <Select
               :optionList="tableOptionList"
               :defaultValue="targetTableId"
               :value="targetTableId"
+              :disabled="tableLoading"
               @change="onTableIdChange"
               style="
                 margin-top: 8px;
@@ -139,6 +144,7 @@
             <Select
               :optionList="viewOptionList"
               :value="targetViewId"
+              :disabled="tableLoading"
               @change="onViewIdChange"
               style="
                 margin-top: 8px;
@@ -156,6 +162,7 @@
             <Select
               :optionList="fieldOptionList"
               :value="targetFieldId"
+              :disabled="tableLoading"
               placeholder="请选择一个字段"
               @change="onFieldIdChange"
               style="
@@ -446,11 +453,12 @@
 
 <script lang="ts" setup>
 import {
-  dashboard,
-  DashboardState,
-  bitable,
+  bridge,
+  dashboard as dashboardSdk,
   FieldType,
-  IFieldMeta
+  IFieldMeta,
+  workspace,
+  bitable as bitableSdk,
 } from "@lark-base-open/js-sdk";
 import { useI18n } from "vue-i18n";
 import { ref, onMounted, computed, watch, shallowRef } from "vue";
@@ -471,6 +479,7 @@ import {
 import * as myBase from "../utils/base";
 import * as CONSTANT from "../utils/constant";
 import * as commonFn from "../utils/common";
+import BaseSelector from "../components/BaseSelector/index.vue";
 
 defineProps<{
   isDark: boolean;
@@ -484,6 +493,8 @@ const themeChartBgColor = ref("")
 // -- 核心数据
 const state = ref("Create"); // 初始状态为配置模式
 const logoShownList = ref<string[]>([]);
+const isMultipleBase = ref(false);
+const baseToken = ref("");
 const targetTableId = ref("");
 const targetViewId = ref("");
 const targetFieldId = ref("");
@@ -528,10 +539,19 @@ const borderOptionList = ref([
   { label: "点线", value: "dotted" },
 ]);
 const isLoading = ref(true)
+const hasInit = ref(false)
+const globalLoading = ref(false)
+const tableLoading = ref(false)
+
 const carouselActiveIndex = ref(0); // 轮播图当前索引
 let intervalId = 0;
 
 let originAttachmentList: string[] = []; // 原始附件列表
+
+const getBitable = async () => {
+  if (baseToken.value === "") return bitableSdk;
+  return await workspace.getBitable(baseToken.value) || bitableSdk;
+}
 
 // -- 方法 --
 /**
@@ -540,6 +560,7 @@ let originAttachmentList: string[] = []; // 原始附件列表
 const saveConfig = async () => {
   const config = {
     customConfig: {
+      baseToken: baseToken.value,
       tableId: targetTableId.value,
       viewId: targetViewId.value,
       fieldId: targetFieldId.value,
@@ -560,7 +581,16 @@ const saveConfig = async () => {
       targetBorderOption: targetBorderOption.value,
       targetStyleBorderOpacity: targetStyleBorderOpacity.value,
     },
+    dataConditions: [
+        {
+          baseToken: baseToken.value,
+          tableId: targetTableId.value,
+        },
+    ],
   }
+
+  const bitable = await getBitable();
+  const dashboard = bitable?.dashboard ?? dashboardSdk;
   await dashboard.saveConfig(config);
 
   await initDashboard(config);
@@ -611,7 +641,8 @@ const queryAttachmentList = async (
   length: number,
   fieldType: FieldType
 ) => {
-  const recordIdList = (await myBase.queryVisibleRecordList(tableId, viewId)).filter(
+  const bitable = await getBitable();
+  const recordIdList = (await myBase.queryVisibleRecordList(tableId, viewId, bitable)).filter(
     Boolean
   ) as string[];
   if (recordIdList.length === 0) return;
@@ -621,7 +652,8 @@ const queryAttachmentList = async (
     recordIdList,
     fieldId,
     length,
-    fieldType
+    fieldType,
+    bitable,
   );
 };
 
@@ -660,6 +692,17 @@ watch([targetViewId, targetFieldId], async ([newViewId, newFieldId], []) => {
   }
 });
 
+watch([baseToken, hasInit], async ([newBaseToken, newHasInit]) => {
+  if (newHasInit && newBaseToken !== "") {
+    await initWithoutConfig();
+    carouselActiveIndex.value = 0;
+    globalLoading.value = false;
+    tableLoading.value = false;
+  }
+});
+
+
+const dashboard = dashboardSdk;
 dashboard.onThemeChange(res => {
   themeChartBgColor.value = res.data.chartBgColor
 
@@ -672,6 +715,15 @@ dashboard.onThemeChange(res => {
   
 });  
 
+const onBaseChange = async (e: string) => {
+  globalLoading.value = true;
+  tableLoading.value = true;
+  hasInit.value = true;
+  baseToken.value = e;
+  targetTableId.value = "";
+  targetViewId.value = "";
+  targetFieldId.value = "";
+};
 
 const onTableIdChange = async (e: string) => {
   targetTableId.value = e;
@@ -773,13 +825,15 @@ const onOriginalStyleOpacity = (e) => {
 };
 
 const queryViewOptionList = async (tableId) => {
-  const list = await myBase.queryViewMetaList(tableId);
+  const bitable = await getBitable();
+  const list = await myBase.queryViewMetaList(tableId, bitable);
   list.unshift({ name: t("allData"), id: "allData" });
   return await formatOptionList(list);
 };
 
 const queryFieldOptionList = async (tableId, viewId) => {
-  const list = await myBase.queryFieldMetaList(tableId, viewId);
+  const bitable = await getBitable();
+  const list = await myBase.queryFieldMetaList(tableId, viewId, bitable);
   const listFiltered = list.filter((item) =>
     CONSTANT.SUPPORT_FIELD_TYPE.includes(item.type)
   );
@@ -788,13 +842,15 @@ const queryFieldOptionList = async (tableId, viewId) => {
 };
 
 const initTableOptionList = async () => {
-  const list = await myBase.queryBaseTableMetaList();
+  const bitable = await getBitable();
+  const list = await myBase.queryBaseTableMetaList(bitable);
   tableOptionList.value = await formatOptionList(list);
 };
 
 const queryTableIdDefaultValue = async () => {
+  const bitable = await getBitable();
   for (let option of tableOptionList.value) {
-    const fields = await myBase.queryFieldMetaList(option.value, "allData");
+    const fields = await myBase.queryFieldMetaList(option.value, "allData", bitable);
     // 判断该表格是否有 Attachment 或 Url 字段
     if (
       fields.some(
@@ -813,7 +869,8 @@ const queryViewIdDefaultValue = () => {
 };
 
 const queryFieldIdDefaultValue = async (targetTableId: string) => {
-  const fields = await myBase.queryFieldMetaList(targetTableId, "allData");
+  const bitable = await getBitable();
+  const fields = await myBase.queryFieldMetaList(targetTableId, "allData", bitable);
   let fieldId = "";
 
   // 查找 Attachment 类型字段
@@ -846,7 +903,21 @@ const splitLogoShownList = (attachmentList) => {
     attachmentList,
     targetStyleRowNumber.value * targetStyleColumnNumber.value
   );
-  console.log("logoShownList", logoShownList.value);
+};
+
+const getBaseToken = async () => {
+    if (!isMultipleBase.value) {
+        return;
+    }
+    const baseList = await workspace.getBaseList({
+        query: "",
+        page: {
+        cursor: "",
+        },
+    });
+    const initialBaseToken = baseList?.base_list?.[0]?.token || "";
+    baseToken.value = initialBaseToken;
+    return initialBaseToken;
 };
 
 const initWithoutConfig = async () => {
@@ -864,6 +935,7 @@ const initDashboard = async (config) => {
   
   await initTableOptionList();
 
+  baseToken.value = config.dataConditions?.[0]?.baseToken || "";
   targetTableId.value =
     "tableId" in customConfig ? customConfig.tableId : await queryTableIdDefaultValue();
   targetViewId.value = customConfig.viewId;
@@ -895,6 +967,11 @@ const initDashboard = async (config) => {
 
 
 onMounted(async () => {
+  const env = await bridge.getEnv();
+  isMultipleBase.value = env.needChangeBase ?? false;
+  
+  const dashboard = dashboardSdk;
+  
   // 初始化勾选字段
   state.value = dashboard.state;
   console.log("state", state.value);
@@ -905,14 +982,18 @@ onMounted(async () => {
   // unsubscribe = dashboard.onThemeChange(handleThemeChange);
 
   if (state.value == STATE_ARRAY[0]) {
+    await getBaseToken();
     await initWithoutConfig();
+    hasInit.value = true;
   } else {
     const config = await dashboard.getConfig();
     console.log("config", config);
     if ("customConfig" in config) {
       await initDashboard(config);
+      hasInit.value = true;
     } else {
       await initWithoutConfig();
+      hasInit.value = true;
     } 
   }
 

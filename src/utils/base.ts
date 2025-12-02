@@ -1,11 +1,11 @@
-import { bitable, FieldType, IOpenSegmentType } from '@lark-base-open/js-sdk';
+import { bitable as bitableSDK, FieldType, IOpenSegmentType } from '@lark-base-open/js-sdk';
 import type { ITable, IOpenAttachment, IAttachmentField, IOpenUrlSegment, IUrlField, IOpenSegment, ITextField } from '@lark-base-open/js-sdk';
 import * as CONSTANT from './constant'
 /**
  * @query {获取 SDK table、view、existedFieldMetaList 等信息}
  * @return {object} table, view, existedFieldMetaList
  */
-export const queryBaseTableAndView = async (tableId: string) => {
+export const queryBaseTableAndView = async (tableId: string, bitable = bitableSDK) => {
     const table = await bitable.base.getTableById(tableId)
     const existedFieldMetaList = await table.getFieldMetaList();
     return { table, existedFieldMetaList }
@@ -18,7 +18,7 @@ export const queryBaseTableAndView = async (tableId: string) => {
  * 
  * @returns {Promise<Array>} 返回一个 Promise，解析为包含表格元数据的数组。
  */
-export const queryBaseTableMetaList = async () => {
+export const queryBaseTableMetaList = async (bitable = bitableSDK) => {
     // 异步获取表格元数据列表
     const tableMetaList = await bitable.base.getTableMetaList()
     // 返回获取到的表格元数据列表
@@ -34,7 +34,7 @@ export const queryBaseTableMetaList = async () => {
  * @param {string} fieldType - 字段的类型，用于查询特定类型的字段元数据。
  * @returns {Object} 返回一个对象，包含表信息和字段元数据列表。
  */
-export const queryTableAndFieldMetaTypeList = async (tableId: string, fieldType: string) => {
+export const queryTableAndFieldMetaTypeList = async (tableId: string, fieldType: string, bitable = bitableSDK) => {
     // 根据表ID获取表对象
     const table = await bitable.base.getTableById(tableId)
     // 根据字段类型获取该类型的所有字段元数据列表
@@ -52,7 +52,7 @@ export const queryTableAndFieldMetaTypeList = async (tableId: string, fieldType:
  * @param {Object} table - 数据表对象。这个对象应该提供了getRecordList方法，用于获取表中的记录列表。
  * @returns {Array} 返回一个包含记录的数组。每个记录都是表中的一行数据。
  */
-export const queryRecordIdList = async (tableId: string) => {
+export const queryRecordIdList = async (tableId: string, bitable = bitableSDK) => {
     // 根据表ID获取表对象
     const table = await bitable.base.getTableById(tableId)
     // 等待数据表的记录列表被获取。
@@ -84,7 +84,7 @@ export const queryFieldById = async (table: ITable, fieldId: string) => {
  * @param {String} tableId - 数据表对象。该对象应提供getViewMetaList方法用于获取视图元数据列表。
  * @returns {Promise<Array>} 返回一个Promise，解析为视图元数据的数组。每个元数据对象包含关于视图的信息。
  */
-export const queryViewMetaList = async (tableId: string) => {
+export const queryViewMetaList = async (tableId: string, bitable = bitableSDK) => {
     const table = await bitable.base.getTableById(tableId)
     // 等待数据表的视图列表被获取。
     const viewMetaList = await table.getViewMetaList();
@@ -101,7 +101,7 @@ export const queryViewMetaList = async (tableId: string) => {
  * @param {string} viewId - 视图的ID，用于唯一标识一个视图。视图是表的一种特定展示方式或筛选条件。
  * @returns {Promise<Array>} 返回一个Promise，解析为包含字段元数据的数组。每个字段元数据包括字段的各种属性，如名称、类型等。
  */
-export const queryFieldMetaList = async (tableId: string, viewId: string) => {
+export const queryFieldMetaList = async (tableId: string, viewId: string, bitable = bitableSDK) => {
     const table = await bitable.base.getTableById(tableId)
     if (viewId === "allData")
         return await table.getFieldMetaList();
@@ -116,7 +116,7 @@ export const queryFieldMetaList = async (tableId: string, viewId: string) => {
  * @param {string} viewId 
  * @return {}
  */
-export const queryVisibleRecordList = async (tableId: string, viewId: string) => {
+export const queryVisibleRecordList = async (tableId: string, viewId: string, bitable = bitableSDK) => {
     const table = await bitable.base.getTableById(tableId)
     if (viewId === "allData") {
         return await table.getRecordIdList()
@@ -165,10 +165,12 @@ export const queryAttachmentList = async (
     recordIdList: string[],
     attachmentFieldId: string,
     length: number,
-    fieldType: FieldType = FieldType.Attachment
+    fieldType: FieldType = FieldType.Attachment,
+    bitable = bitableSDK
 ) => {
     const table = await bitable.base.getTableById(tableId)
     const attachmentField = await table.getFieldById(attachmentFieldId);
+
     const method = (fieldType in getAttachmentUrlMethods)
         ? getAttachmentUrlMethods[fieldType as keyof typeof getAttachmentUrlMethods]
         : getAttachmentUrlMethods[FieldType.Attachment]
