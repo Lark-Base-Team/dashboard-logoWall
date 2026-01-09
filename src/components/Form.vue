@@ -932,8 +932,6 @@ const initWithoutConfig = async () => {
 
 const initDashboard = async (config) => {
   const customConfig = config.customConfig;
-  
-  await initTableOptionList();
 
   baseToken.value = config.dataConditions?.[0]?.baseToken || "";
   targetTableId.value =
