@@ -842,9 +842,11 @@ const queryFieldOptionList = async (tableId, viewId) => {
 };
 
 const initTableOptionList = async () => {
-  const bitable = await getBitable();
-  const list = await myBase.queryBaseTableMetaList(bitable);
-  tableOptionList.value = await formatOptionList(list);
+  if (dashboardSdk.state === STATE_ARRAY[0] || dashboardSdk.state === STATE_ARRAY[1]) {
+    const bitable = await getBitable();
+    const list = await myBase.queryBaseTableMetaList(bitable);
+    tableOptionList.value = await formatOptionList(list);
+  }
 };
 
 const queryTableIdDefaultValue = async () => {
@@ -932,6 +934,7 @@ const initWithoutConfig = async () => {
 
 const initDashboard = async (config) => {
   const customConfig = config.customConfig;
+  await initTableOptionList();
 
   baseToken.value = config.dataConditions?.[0]?.baseToken || "";
   targetTableId.value =
